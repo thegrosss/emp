@@ -32,22 +32,22 @@ void fdm::mesh_to_slae(mesh &mesh, func2D_u &u, func2D_f &f)
             A->diags[4][i] = -node.lambda / (hy * hy);
          }
          // Если сетка неравномерная
-         //else
-         //{
-         //   double hx = mesh[i + 1].p.x - node.p.x;
-         //   double hx_prev = node.p.x - mesh[i - 1].p.x;
+         else
+         {
+            double hx = mesh[i + 1].p.x - node.p.x;
+            double hx_prev = node.p.x - mesh[i - 1].p.x;
 
-         //   double hy = mesh[i + kx].p.y - node.p.y;
-         //   double hy_prev = node.p.y - mesh[i - kx].p.y;
+            double hy = mesh[i + kx].p.y - node.p.y;
+            double hy_prev = node.p.y - mesh[i - kx].p.y;
 
-         //   A->diags[0][i] = (2.0 / (hx_prev * hx) + 2.0 / (hy_prev * hy)) * node.lambda + node.gamma;
-         //   A->diags[1][i - 1] = -2.0 * node.lambda / (hx_prev * (hx + hx_prev));
-         //   A->diags[3][i] = -2.0 * node.lambda / (hx * (hx + hx_prev));
-         //   A->diags[2][i - kx] = -2.0 * node.lambda / (hy_prev * (hy + hy_prev));
-         //   A->diags[4][i] = -2.0 * node.lambda / (hy * (hy + hy_prev));
-         //}
+            A->diags[0][i] = (2.0 / (hx_prev * hx) + 2.0 / (hy_prev * hy)) * node.lambda + node.gamma;
+            A->diags[1][i - 1] = -2.0 * node.lambda / (hx_prev * (hx + hx_prev));
+            A->diags[3][i] = -2.0 * node.lambda / (hx * (hx + hx_prev));
+            A->diags[2][i - kx] = -2.0 * node.lambda / (hy_prev * (hy + hy_prev));
+            A->diags[4][i] = -2.0 * node.lambda / (hy * (hy + hy_prev));
+         }
 
-         //b[i] = f(node.p.x, node.p.y, node.lambda, node.gamma);
+         b[i] = f(node.p.x, node.p.y, node.lambda, node.gamma);
       }
 
       // Фиктивный узел
@@ -116,7 +116,6 @@ void fdm::mesh_to_slae(mesh &mesh, func2D_u &u, func2D_f &f)
       }
    }
 }
-
 
 // Решить систему и вернуть результат
 std::pair<uint32_t, double> fdm::calculate(std::vector<double> &u)

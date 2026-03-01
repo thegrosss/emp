@@ -48,7 +48,7 @@ void testing_module::run_tests()
 
    mg.build_mesh(mesh);
 
-   for (uint32_t test = 4; test < functions.size(); test++)
+   for (uint32_t test = 0; test < functions.size(); test++)
    {
       calc_exact(functions[test].first, mesh);
       fdm.exact = exact;
