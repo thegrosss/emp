@@ -1,0 +1,21 @@
+{
+  "mfe_method": "NEWTON",
+  "relaxation":  false,
+
+  "area": {
+    "type": "UNIFORM",
+    "limits": [ 0, 1 ],
+    "sigma": 1,
+    "elements_count": 10,
+    "discharge_coefficient": 1.4,
+    "nesting": 0
+  },
+
+  "time": {
+    "type": "UNIFORM",
+    "limits": [ 0, 1 ],
+    "elements_count": 10,
+    "discharge_coefficient": 1.4,
+    "nesting": 0
+  }
+}
