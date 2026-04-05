@@ -253,17 +253,34 @@ double mfe::error(mesh &mesh)
 {
    double err = 0.0;
    double exact_norm = 0.0;
+   double t_final = mesh.get_time(mesh.get_time_size() - 1);
 
+   exact.clear();
    exact.resize(q.size(), 0);
 
-   exact[0] = u(mesh[0].x, mesh.get_time(mesh.get_time_size() - 1));
-   for (uint32_t i = 0; i < mesh.get_fe_count(); i++)
-      exact[i + 1] = u(mesh[i].x_next, mesh.get_time(mesh.get_time_size() - 1));
-
-   for (uint32_t i = 0; i < q.size(); i++)
+   for (uint32_t ielem = 0; ielem < mesh.get_fe_count(); ielem++)
    {
-      err += (exact[i] - q[i]) * (exact[i] - q[i]);
-      exact_norm += exact[i] * exact[i];
+      double h = mesh[ielem].x_next - mesh[ielem].x;
+      double xl = mesh[ielem].x;
+      double xr = mesh[ielem].x_next;
+
+      // 2-точечная квадратура Гаусса
+      double gauss_points[2] = { -0.5773502691896257, 0.5773502691896257 };
+      double weights[2] = { 1.0, 1.0 };
+
+      for (int gp = 0; gp < 2; gp++)
+      {
+         double xi = (gauss_points[gp] + 1.0) / 2.0;
+         double x = xl + xi * h;
+
+         // Линейная интерполяция
+         double u_num = (1.0 - xi) * q[ielem] + xi * q[ielem + 1];
+         double u_exact = u(x, t_final);
+
+         double weight = weights[gp] * h / 2.0;
+         err += weight * (u_exact - u_num) * (u_exact - u_num);
+         exact_norm += weight * u_exact * u_exact;
+      }
    }
 
    return sqrt(err) / sqrt(exact_norm);
@@ -335,8 +352,9 @@ void mfe::linearization_newton(const finite_elem &elem, const double delta_t)
 // Производная от функции lambda по qi
 double mfe::dlambda(double q2, double q1, double h, double x, uint32_t var)
 {
+   double du_dx = (q2 - q1) / h;
    //return 0;
    return 1.0;
-   //return 2 * q2;
-   //return exp((q2 - q1) / h);
+   //return 2 * du_dx;
+   //return exp(du_dx);
 }
