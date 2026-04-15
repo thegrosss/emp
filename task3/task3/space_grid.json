@@ -1,0 +1,19 @@
+{
+  "area": {
+    "x_start": 0,
+    "x_end": 5,
+    "y_start": 0,
+    "y_end": 5,
+    "lambda": 1,
+    "sigma": 1,
+    "hi": 1
+  },
+  "parameters": {
+    "nx": 200,
+    "ny": 200,
+    "kx": 1,
+    "ky": 1,
+    "type": 0,
+    "nested": 0
+  }
+}
