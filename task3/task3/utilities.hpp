@@ -5,7 +5,7 @@
 
 #include "head.hpp"
 
-inline static double norm(const dvector &vector)
+inline static double norm(dvector &vector)
 {
    double scalar = 0.0;
 

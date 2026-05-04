@@ -1,176 +1,246 @@
-// ================  MESH_GENERATOR.CPP ================
+// ================  MESH_GENERATOR.HPP ================
 #include "mesh_generator.hpp"
+#include "json.hpp"
 
-// ====================================================================
+// ===================================================================
 space_grid_generator::space_grid_generator()
 {
-   area_xy = new area();
-   nx = ny = 0;
-   kx = ky = 0.0;
+   area_xyz = new area();
+   nx = ny = nz = 0;
+   kx = ky = kz = 0.0;
    type = mesh_type::UNIFORM;
    nested = 0;
 }
 
-// ----------------------------------------------------------------
 void space_grid_generator::read_data(std::string path)
 {
    std::ifstream input(path + "space_grid.json");
 
    if (input.is_open())
    {
-      nlohmann::json sg{};
-      input >> sg;
+      nlohmann::json space_grid{};
+
+      input >> space_grid;
+
       input.close();
 
-      area_xy->x_start = sg["area"]["x_start"];
-      area_xy->x_end = sg["area"]["x_end"];
-      area_xy->y_start = sg["area"]["y_start"];
-      area_xy->y_end = sg["area"]["y_end"];
-      area_xy->lambda = sg["area"]["lambda"];
-      area_xy->sigma = sg["area"]["sigma"];
-      area_xy->hi = sg["area"]["hi"];
+      area_xyz->x_start = space_grid["area"]["x_start"];
+      area_xyz->x_end = space_grid["area"]["x_end"];
+      area_xyz->y_start = space_grid["area"]["y_start"];
+      area_xyz->y_end = space_grid["area"]["y_end"];
+      area_xyz->z_start = space_grid["area"]["z_start"];
+      area_xyz->z_end = space_grid["area"]["z_end"];
+      area_xyz->lambda = space_grid["area"]["lambda"];
+      area_xyz->sigma = space_grid["area"]["sigma"];
+      area_xyz->hi = space_grid["area"]["hi"];
 
-      nx = sg["parameters"]["nx"];
-      ny = sg["parameters"]["ny"];
-      kx = sg["parameters"]["kx"];
-      ky = sg["parameters"]["ky"];
-      type = sg["parameters"]["type"];
-      nested = sg["parameters"]["nested"];
+      nx = space_grid["parameters"]["nx"];
+      ny = space_grid["parameters"]["ny"];
+      nz = space_grid["parameters"]["nz"];
+      kx = space_grid["parameters"]["kx"];
+      ky = space_grid["parameters"]["ky"];
+      kz = space_grid["parameters"]["kz"];
+      type = space_grid["parameters"]["type"];
+      nested = space_grid["parameters"]["nested"];
    }
-   else throw "Can't open space_grid.json\n";
+   else throw "Can't open file\n";
 }
 
-// ----------------------------------------------------------------
 void space_grid_generator::generate_nodes()
 {
-   // Вложенные измельчения сетки
-   if (nested == 1) { nx *= 2; kx = sqrt(kx); ny *= 2; ky = sqrt(ky); }
-   else if (nested == 2) { nx *= 4; kx = sqrt(sqrt(kx)); ny *= 4; ky = sqrt(sqrt(ky)); }
-   else if (nested == 3) { nx *= 8; kx = sqrt(sqrt(sqrt(kx))); ny *= 8; ky = sqrt(sqrt(sqrt(ky))); }
+   if (nested == 1)
+   {
+      nx *= 2; kx = sqrt(kx);
+      ny *= 2; ky = sqrt(ky);
+      nz *= 2; kz = sqrt(kz);
+   }
+   else if (nested == 2)
+   {
+      nx *= 4; kx = sqrt(sqrt(kx));
+      ny *= 4; ky = sqrt(sqrt(ky));
+      nz *= 4; kz = sqrt(sqrt(kz));
+   }
+   else if (nested == 3)
+   {
+      nx *= 8; kx = sqrt(sqrt(sqrt(kx)));
+      ny *= 8; ky = sqrt(sqrt(sqrt(ky)));
+      nz *= 8; kz = sqrt(sqrt(sqrt(kz)));
+   }
 
-   x.resize(nx + 1);
-   y.resize(ny + 1);
 
    if (type == mesh_type::UNIFORM)
    {
-      double hx = (area_xy->x_end - area_xy->x_start) / double(nx);
-      double hy = (area_xy->y_end - area_xy->y_start) / double(ny);
+      double hx = (area_xyz->x_end - area_xyz->x_start) / double(nx);
+      double hy = (area_xyz->y_end - area_xyz->y_start) / double(ny);
+      double hz = (area_xyz->z_end - area_xyz->z_start) / double(nz);
 
-      for (uint32_t i = 0; i <= nx; i++) x[i] = area_xy->x_start + hx * i;
-      for (uint32_t i = 0; i <= ny; i++) y[i] = area_xy->y_start + hy * i;
+      x.resize(nx + 1);
+      y.resize(ny + 1);
+      z.resize(nz + 1);
+
+      for (uint32_t i = 0; i < x.size(); i++)
+         x[i] = area_xyz->x_start + hx * i;
+
+      for (uint32_t i = 0; i < y.size(); i++)
+         y[i] = area_xyz->y_start + hy * i;
+
+      for (uint32_t i = 0; i < z.size(); i++)
+         z[i] = area_xyz->z_start + hz * i;
    }
-   else // неравномерная сетка (геометрическая прогрессия)
+   else
    {
-      double hx = (area_xy->x_end - area_xy->x_start) * (1.0 - kx) / (1.0 - pow(kx, nx));
-      double hy = (area_xy->y_end - area_xy->y_start) * (1.0 - ky) / (1.0 - pow(ky, ny));
+      double hx = (area_xyz->x_end - area_xyz->x_start) * (1 - kx) / (1 - pow(kx, nx));
+      double hy = (area_xyz->y_end - area_xyz->y_start) * (1 - ky) / (1 - pow(ky, ny));
+      double hz = (area_xyz->z_end - area_xyz->z_start) * (1 - kz) / (1 - pow(kz, nz));
 
-      x[0] = area_xy->x_start;
-      for (uint32_t i = 1; i <= nx; i++) x[i] = x[i - 1] + hx * pow(kx, i - 1);
+      x.resize(nx + 1);
+      y.resize(ny + 1);
+      z.resize(nz + 1);
 
-      y[0] = area_xy->y_start;
-      for (uint32_t i = 1; i <= ny; i++) y[i] = y[i - 1] + hy * pow(ky, i - 1);
+      for (uint32_t i = 0; i < x.size(); i++)
+         x[i] = area_xyz->x_start + hx * kx * i;
+
+      for (uint32_t i = 0; i < y.size(); i++)
+         y[i] = area_xyz->y_start + hy * ky * i;
+
+      for (uint32_t i = 0; i < z.size(); i++)
+         z[i] = area_xyz->z_start + hz * kz * i;
    }
 }
 
-// ----------------------------------------------------------------
-// Наложение первых краевых условий (все граничные узлы — Дирихле)
-void space_grid_generator::make_bc(space_grid *&grid, function2D &us, function2D &uc)
+void space_grid_generator::make_bc(space_grid *&grid, function3D &us, function3D &uc)
 {
-   std::set<uint32_t> dir_nodes;
+   // Формируем 1-ые краевые условия ------------------------------
+   std::set<uint32_t> dirichlet;
 
-   for (uint32_t i = 0; i < grid->edges.size(); i++)
-      for (uint32_t j = 0; j < grid->edges[i].nodes.size(); j++)
-         dir_nodes.insert(grid->edges[i].nodes[j]);
+   uint32_t dirichlet_counter = 0;
 
-   grid->dirichlet.resize(2 * dir_nodes.size());
+   for (uint32_t i = 0; i < grid->faces.size(); i++)
+      for (uint32_t j = 0; j < grid->faces[i].nodes.size(); j++)
+         dirichlet.insert(grid->faces[i].nodes[j]);
 
-   uint32_t idx = 0;
-   for (const auto &n : dir_nodes)
+   grid->dirichlet.resize(2 * dirichlet.size());
+
+   uint32_t i = 0;
+
+   for (const auto &it : dirichlet)
    {
-      point2D pt = grid->get_point(n);
-      grid->dirichlet[2 * idx] = { 2 * n,     us(pt.x, pt.y) };
-      grid->dirichlet[2 * idx + 1] = { 2 * n + 1, uc(pt.x, pt.y) };
-      idx++;
+      point3D point = grid->get_point(it);
+      grid->dirichlet[2 * i] = { 2 * it, us(point.x, point.y, point.z) };
+      grid->dirichlet[2 * i + 1] = { 2 * it + 1, uc(point.x, point.y, point.z) };
+      i++;
    }
+
+   dirichlet.clear();
 }
 
-// ----------------------------------------------------------------
-void space_grid_generator::build_mesh(space_grid *&grid, function2D &us, function2D &uc)
+void space_grid_generator::build_mesh(space_grid *&grid, function3D &us, function3D &uc)
 {
    read_data();
    generate_nodes();
 
-   grid = new space_grid(nx, ny);
+   uint32_t n_xy_points = (nx + 1) * (ny + 1);
+
+   grid = new space_grid(nx, ny, nz);
+
    grid->set_type(type);
 
-   // ----- Заполнение узлов (обход: y — внешний, x — внутренний) -----
+   // Формируем узлы -------------------------------------------
    uint32_t pos = 0;
-   for (uint32_t i = 0; i <= ny; i++)
-      for (uint32_t j = 0; j <= nx; j++)
-         grid->points[pos++] = point2D(x[j], y[i]);
+
+   for (uint32_t i = 0; i < z.size(); i++)
+      for (uint32_t j = 0; j < y.size(); j++)
+         for (uint32_t k = 0; k < x.size(); k++)
+            grid->points[pos++] = point3D(x[k], y[j], z[i]);
 
    x.clear();
    y.clear();
+   z.clear();
 
-   // ----- Заполнение конечных элементов ------------------------------
-   /*
-     Нумерация узлов внутри элемента:
-       2 --- 3
-       |     |
-       0 --- 1
-     nodes[k] = глобальный номер k-го узла элемента
-   */
-   std::array<uint32_t, 4> nodes;
+   // Формируем конечные элементы ------------------------------
+   std::array<uint32_t, 8> nodes;
+
    uint32_t ielem = 0;
 
-   for (uint32_t i = 0; i < ny; i++)
+   for (uint32_t k = 0; k < nz; k++)
    {
-      for (uint32_t j = 0; j < nx; j++)
+      for (uint32_t i = 0; i < ny; i++)
       {
-         nodes[0] = i * (nx + 1) + j;
-         nodes[1] = i * (nx + 1) + j + 1;
-         nodes[2] = (i + 1) * (nx + 1) + j;
-         nodes[3] = (i + 1) * (nx + 1) + j + 1;
+         for (uint32_t j = 0; j < nx; j++)
+         {
+            nodes[0] = j + i * (nx + 1) + k * n_xy_points;
+            nodes[1] = j + i * (nx + 1) + 1 + k * n_xy_points;
+            nodes[2] = j + i * (nx + 1) + nx + 1 + k * n_xy_points;
+            nodes[3] = j + i * (nx + 1) + nx + 2 + k * n_xy_points;
+            nodes[4] = j + i * (nx + 1) + n_xy_points + k * n_xy_points;
+            nodes[5] = j + i * (nx + 1) + n_xy_points + 1 + k * n_xy_points;
+            nodes[6] = j + i * (nx + 1) + n_xy_points + nx + 1 + k * n_xy_points;
+            nodes[7] = j + i * (nx + 1) + n_xy_points + nx + 2 + k * n_xy_points;
 
-         grid->elems[ielem++] = finite_elem(
-            nodes, area_xy->lambda, area_xy->sigma, area_xy->hi
-         );
+            grid->elems[ielem++] = finite_elem(
+               nodes, area_xyz->lambda, area_xyz->sigma, area_xyz->hi
+            );
+         }
       }
    }
 
-   delete area_xy;
-   area_xy = nullptr;
+   delete area_xyz;
+   area_xyz = nullptr;
 
-   // ----- Граничные рёбра (все 4 стороны прямоугольника) ------------
-   std::array<uint32_t, 2> edge_nodes;
-   uint32_t iedge = 0;
+   // Формируем грани ------------------------------------------
+   std::array<uint32_t, 4> face_nodes;
 
-   // Нижняя сторона (y = y_start, строка i = 0)
-   for (uint32_t j = 0; j < nx; j++)
+   // XY при Z = Z_min и Z = Z_max
+   uint32_t iface = 0;
+
+   for (uint32_t k = 0; k < 2; k++)
    {
-      edge_nodes = { j, j + 1 };
-      grid->edges[iedge++] = edge(edge_nodes, iedge);
+      for (uint32_t i = 0; i < ny; i++)
+      {
+         for (uint32_t j = 0; j < nx; j++)
+         {
+            face_nodes[0] = n_xy_points * nz * k + j + i * (nx + 1);
+            face_nodes[1] = n_xy_points * nz * k + j + i * (nx + 1) + 1;
+            face_nodes[2] = n_xy_points * nz * k + j + i * (nx + 1) + nx + 1;
+            face_nodes[3] = n_xy_points * nz * k + j + i * (nx + 1) + nx + 2;
+
+            grid->faces[iface++] = face(face_nodes, iface);
+         }
+      }
    }
 
-   // Верхняя сторона (y = y_end, строка i = ny)
-   for (uint32_t j = 0; j < nx; j++)
+   // XZ при Y = Y_min и Y = Y_max
+   for (uint32_t k = 0; k < 2; k++)
    {
-      edge_nodes = { ny * (nx + 1) + j, ny * (nx + 1) + j + 1 };
-      grid->edges[iedge++] = edge(edge_nodes, iedge);
+      for (uint32_t i = 0; i < nz; i++)
+      {
+         for (uint32_t j = 0; j < nx; j++)
+         {
+            face_nodes[0] = k * (nx + 1) * ny + j + i * n_xy_points;
+            face_nodes[1] = k * (nx + 1) * ny + j + i * n_xy_points + 1;
+            face_nodes[2] = k * (nx + 1) * ny + j + i * n_xy_points + n_xy_points;
+            face_nodes[3] = k * (nx + 1) * ny + j + i * n_xy_points + n_xy_points + 1;
+
+            grid->faces[iface++] = face(face_nodes, iface);
+         }
+      }
    }
 
-   // Левая сторона (x = x_start, столбец j = 0)
-   for (uint32_t i = 0; i < ny; i++)
+   // YZ при X = X_min и X = X_max
+   for (uint32_t k = 0; k < 2; k++)
    {
-      edge_nodes = { i * (nx + 1), (i + 1) * (nx + 1) };
-      grid->edges[iedge++] = edge(edge_nodes, iedge);
-   }
+      for (uint32_t i = 0; i < nz; i++)
+      {
+         for (uint32_t j = 0; j < ny; j++)
+         {
+            face_nodes[0] = k * nx + j * (nx + 1) + i * n_xy_points;
+            face_nodes[1] = k * nx + j * (nx + 1) + i * n_xy_points + nx + 1;
+            face_nodes[2] = k * nx + j * (nx + 1) + i * n_xy_points + n_xy_points;
+            face_nodes[3] = k * nx + j * (nx + 1) + i * n_xy_points + n_xy_points + nx + 1;
 
-   // Правая сторона (x = x_end, столбец j = nx)
-   for (uint32_t i = 0; i < ny; i++)
-   {
-      edge_nodes = { i * (nx + 1) + nx, (i + 1) * (nx + 1) + nx };
-      grid->edges[iedge++] = edge(edge_nodes, iedge);
+            grid->faces[iface++] = face(face_nodes, iface);
+         }
+      }
    }
 
    make_bc(grid, us, uc);

@@ -17,10 +17,7 @@ const std::string directory = "C:\\Users\\kiril\\Desktop\\НГТУ\\3 курс\\
 
 typedef std::vector<double> dvector;
 
-// Функция двух пространственных переменных
-typedef std::function<double(double, double)> function2D;
-
-// Правая часть / граничное условие: (x, y, lambda, sigma, hi, w)
-typedef std::function<double(double, double, double, double, double, double)> r_function2D;
+typedef std::function<double(double, double, double)> function3D;
+typedef std::function<double(double, double, double, double, double, double, double)> r_function3D;
 
 #endif

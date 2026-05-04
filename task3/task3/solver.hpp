@@ -7,11 +7,11 @@
 #include "decomposer.hpp"
 #include "utilities.hpp"
 
-// Только два метода: прямой (LU) и итерационный (LOS+LU-предобусл.)
 enum class method
 {
    LU,
-   LOS_LU
+   LOS_LU,
+   BCGSTAB_LU
 };
 
 struct result
@@ -24,29 +24,30 @@ struct result
 class solver
 {
 public:
-   // Прямой метод (LU-разложение профильной матрицы)
-   result solve_by_LU(profile_matrix &A, const dvector &b, dvector &x);
-
-   // Итерационный метод (LOS с LU-предобусловливанием)
    result solve_iterative(
       sparse_matrix &A,
       dvector &b,
       dvector &x,
       method method,
-      uint32_t max_iter,
-      double eps
+      uint32_t max_iter, double eps
    );
 
+   result solve_by_LU(profile_matrix &A, const dvector &b, dvector &x);
+
 private:
+   // Параметры для итерационного решателя
    uint32_t max_iter;
-   double   eps;
+   double eps;
 
-   // Прямой и обратный ход LU-предобусловливателя
-   void LU_direct(profile_matrix &A, const dvector &b, dvector &x);
-   void LU_reverse(profile_matrix &A, const dvector &b, dvector &x);
+   // Итерационные методы -------------------------------------------------------------
+   // Локально - оптимальная схема + LU предобуславливание
+   void LU_direct(sparse_matrix &A, const dvector &b, dvector &x);
+   void LU_reverse(sparse_matrix &A, const dvector &b, dvector &x);
 
-   // Локально-оптимальная схема (LOS) + LU
    result LOS_LU(sparse_matrix &A, dvector &b, dvector &x);
+
+   // Метод бисопряженных градиаентов стабилизированный + LU предобуславливание
+   result BCGSTAB_LU(sparse_matrix &A, dvector &b, dvector &x);
 };
 
 #endif

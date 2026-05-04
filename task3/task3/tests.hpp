@@ -11,8 +11,8 @@
 
 struct test_functions
 {
-   function2D   us, uc;     // точные решения (sin и cos части)
-   r_function2D fs, fc;     // правые части
+   function3D us, uc;
+   r_function3D fs, fc;
 };
 
 class tests
@@ -24,8 +24,11 @@ public:
 
 private:
    void omega_tests();
+
    void lambda_tests();
+
    void sigma_tests();
+
    void hi_tests();
 
    void calc_exact(space_grid &grid);

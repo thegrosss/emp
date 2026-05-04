@@ -11,8 +11,7 @@ class gauss
 public:
    gauss();
 
-   // Двумерное интегрирование квадратурами Гаусса (3x3 точки)
-   double integrate2D(function2D &f, omega &omega);
+   double integrate3D(function3D &f, omega &omega);
 
 private:
    std::array<double, 3> gauss_points;

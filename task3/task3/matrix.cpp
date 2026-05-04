@@ -1,5 +1,6 @@
 // ================  MATRIX.HPP ================
 #include "matrix.hpp"
+#include "json.hpp"
 
 std::unique_ptr<dvector> sparse_matrix::dot(const dvector &vector)
 {
@@ -47,6 +48,7 @@ profile_matrix *sparse_matrix::to_profile()
 
    uint32_t count = 0;
 
+   // Меняем портрет ----------------------------------------------
    for (uint32_t i = 0; i < dim; i++)
    {
       count = 0;
@@ -71,6 +73,7 @@ profile_matrix *sparse_matrix::to_profile()
    matrix->ggl.resize(matrix->ig.back());
    matrix->ggu.resize(matrix->ig.back());
 
+   // Заполняем верхний и нижний треугольники ---------------------
    for (uint32_t i = 0; i < dim; i++)
    {
       uint32_t i0_p = matrix->ig[i];
@@ -104,7 +107,7 @@ void sparse_matrix::save(matrix_type type, std::string path)
    switch (type)
    {
    case matrix_type::DENSE: {
-      std::ofstream dense_out(path + "dense.json");
+      std::ofstream dense_out(path + "dense.txt");
       nlohmann::json dense{};
 
       dense["dense"] = dense_matrix;

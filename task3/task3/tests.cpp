@@ -1,169 +1,135 @@
 // ================  TESTS.CPP ================
 #include "tests.hpp"
 
-// Индекс активного набора тест-функций (0..3)
 uint8_t ifu = 3;
 
-/*
-  Гармоническая задача (вар. 5): 2D, декартовы координаты, билинейные базис. функции.
-  Уравнение:
-      -div(λ grad u_s) - ω²χ u_s - ωσ u_c = f_s
-      -div(λ grad u_c) - ω²χ u_c + ωσ u_s = f_c
-
-  Тест 0: u_s = x+y,     u_c = x-y       (линейные, Δu = 0)
-  Тест 1: u_s = x²+y²,   u_c = x²-y²    (квадратичные)
-  Тест 2: u_s = x³+y³,   u_c = x³-y³    (кубические)
-  Тест 3: u_s = sin(x+y),u_c = exp(x+y) (нелинейные)
-*/
 tests::tests()
 {
    funcs.resize(4);
 
-   // ---- Тест 0: полиномы 1-й степени (Δu = 0) ----
-   funcs[0].us = [](double x, double y) { return x + y; };
-   funcs[0].uc = [](double x, double y) { return x - y; };
-   funcs[0].fs = [this](double x, double y, double lambda, double sigma, double hi, double w)
+   funcs[0].us = [](double x, double y, double z) { return x + y + z; };
+   funcs[0].uc = [](double x, double y, double z) { return x - y - z; };
+   funcs[0].fs = [this](double x, double y, double z, double lambda, double sigma, double hi, double w)
       {
-         return -w * sigma * funcs[0].uc(x, y)
-            - w * w * hi * funcs[0].us(x, y);
+         return -w * sigma * funcs[0].uc(x, y, z) - w * w * hi * funcs[0].us(x, y, z);
       };
-   funcs[0].fc = [this](double x, double y, double lambda, double sigma, double hi, double w)
+   funcs[0].fc = [this](double x, double y, double z, double lambda, double sigma, double hi, double w)
       {
-         return w * sigma * funcs[0].us(x, y)
-            - w * w * hi * funcs[0].uc(x, y);
+         return w * sigma * funcs[0].us(x, y, z) - w * w * hi * funcs[0].uc(x, y, z);
       };
 
-   // ---- Тест 1: полиномы 2-й степени ----
-   // Δ(x²+y²) = 4,   Δ(x²-y²) = 0
-   funcs[1].us = [](double x, double y) { return x * x + y * y; };
-   funcs[1].uc = [](double x, double y) { return x * x - y * y; };
-   funcs[1].fs = [this](double x, double y, double lambda, double sigma, double hi, double w)
+   funcs[1].us = [](double x, double y, double z) { return x * x + y * y + z * z; };
+   funcs[1].uc = [](double x, double y, double z) { return 3 * x * x - 2 * y * y + z * z; };
+   funcs[1].fs = [this](double x, double y, double z, double lambda, double sigma, double hi, double w)
       {
-         return -4.0 * lambda
-            - w * sigma * funcs[1].uc(x, y)
-            - w * w * hi * funcs[1].us(x, y);
+         return -6.0 * lambda - w * sigma * funcs[1].uc(x, y, z) - w * w * hi * funcs[1].us(x, y, z);
       };
-   funcs[1].fc = [this](double x, double y, double lambda, double sigma, double hi, double w)
+   funcs[1].fc = [this](double x, double y, double z, double lambda, double sigma, double hi, double w)
       {
-         return  w * sigma * funcs[1].us(x, y)
-            - w * w * hi * funcs[1].uc(x, y);
+         return -4.0 * lambda + w * sigma * funcs[1].us(x, y, z) - w * w * hi * funcs[1].uc(x, y, z);
       };
 
-   // ---- Тест 2: полиномы 3-й степени ----
-   // Δ(x³+y³) = 6x+6y,  Δ(x³-y³) = 6x-6y
-   funcs[2].us = [](double x, double y) { return x * x * x + y * y * y; };
-   funcs[2].uc = [](double x, double y) { return x * x * x - y * y * y; };
-   funcs[2].fs = [this](double x, double y, double lambda, double sigma, double hi, double w)
+   funcs[2].us = [](double x, double y, double z) { return x * x * x + y * y * y + z * z * z; };
+   funcs[2].uc = [](double x, double y, double z) { return 2 * x * x * x - y * y * y + 3 * z * z * z; };
+   funcs[2].fs = [this](double x, double y, double z, double lambda, double sigma, double hi, double w)
       {
-         return -lambda * 6.0 * (x + y)
-            - w * sigma * funcs[2].uc(x, y)
-            - w * w * hi * funcs[2].us(x, y);
+         return -lambda * 6 * (x + y + z) - w * sigma * funcs[2].uc(x, y, z) - w * w * hi * funcs[2].us(x, y, z);
       };
-   funcs[2].fc = [this](double x, double y, double lambda, double sigma, double hi, double w)
+   funcs[2].fc = [this](double x, double y, double z, double lambda, double sigma, double hi, double w)
       {
-         return -lambda * 6.0 * (x - y)
-            + w * sigma * funcs[2].us(x, y)
-            - w * w * hi * funcs[2].uc(x, y);
+         return -lambda * 6 * (2 * x - y + 3 * z) + w * sigma * funcs[2].us(x, y, z) - w * w * hi * funcs[2].uc(x, y, z);
       };
 
-   // ---- Тест 3: нелинейные функции ----
-   // Δ(sin(x+y)) = -2 sin(x+y),  Δ(exp(x+y)) = 2 exp(x+y)
-   funcs[3].us = [](double x, double y) { return sin(x + y); };
-   funcs[3].uc = [](double x, double y) { return exp(x + y); };
-   funcs[3].fs = [this](double x, double y, double lambda, double sigma, double hi, double w)
+   funcs[3].us = [](double x, double y, double z) { return sin(x + y + z); };
+   funcs[3].uc = [](double x, double y, double z) { return exp(x + y) - z; };
+   funcs[3].fs = [this](double x, double y, double z, double lambda, double sigma, double hi, double w)
       {
-         return 2.0 * lambda * sin(x + y)
-            - w * sigma * funcs[3].uc(x, y)
-            - w * w * hi * funcs[3].us(x, y);
+         return lambda * sin(x + y + z) - w * sigma * funcs[3].uc(x, y, z) - w * w * hi * funcs[3].us(x, y, z);
       };
-   funcs[3].fc = [this](double x, double y, double lambda, double sigma, double hi, double w)
+   funcs[3].fc = [this](double x, double y, double z, double lambda, double sigma, double hi, double w)
       {
-         return -2.0 * lambda * exp(x + y)
-            + w * sigma * funcs[3].us(x, y)
-            - w * w * hi * funcs[3].uc(x, y);
+         return -2.0 * lambda * exp(x + y) + w * sigma * funcs[3].us(x, y, z) - w * w * hi * funcs[3].uc(x, y, z);
       };
 }
 
-// ----------------------------------------------------------------
+
 void tests::calc_exact(space_grid &grid)
 {
    exact.resize(2 * grid.get_nodes_count());
 
    for (uint32_t i = 0; i < grid.get_nodes_count(); i++)
    {
-      point2D pt = grid.get_point(i);
-      exact[2 * i] = funcs[ifu].us(pt.x, pt.y);
-      exact[2 * i + 1] = funcs[ifu].uc(pt.x, pt.y);
+      point3D point = grid.get_point(i);
+
+      exact[2 * i] = funcs[ifu].us(point.x, point.y, point.z);
+      exact[2 * i + 1] = funcs[ifu].uc(point.x, point.y, point.z);
    }
 }
 
-// ----------------------------------------------------------------
-// Заголовок таблицы (сравниваем LU и LOS_LU)
-static void write_header(std::ofstream &out, const std::string &param)
-{
-   out << std::left
-      << std::setw(12) << param
-      << std::setw(12) << "|LU_time"
-      << std::setw(12) << "|LOS_time"
-      << std::setw(14) << "|LOS_iters"
-      << std::setw(18) << "|LOS_residual"
-      << std::setw(14) << "|LU_error"
-      << std::setw(14) << "|LOS_error"
-      << "\n";
-   out << std::string(96, '-') << "\n";
-}
 
-// ----------------------------------------------------------------
 void tests::omega_tests()
 {
    space_grid_generator sgg;
    space_grid *sg = nullptr;
+
    sgg.build_mesh(sg, funcs[ifu].us, funcs[ifu].uc);
 
    calc_exact(*sg);
    double exact_norm = norm(exact);
 
-   double omegas[] = { 1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 };
+   double omegas[] = { 1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e-3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 };
 
-   std::ofstream out(directory + "tests\\omega_tests.txt");
-   write_header(out, "omega");
+   result res1, res2, res3;
 
-   std::cout << "=== omega tests ===\n";
+   std::ofstream wres(directory + "tests\\" + "omega_tests.txt");
 
-   for (const auto &w : omegas)
+   wres << std::left << std::setw(10) << "omega"
+      << std::setw(10) << "|LU_time" << std::setw(10) << "|LOS_time" << std::setw(14) << "|BCGSTAB_time"
+      << std::setw(14) << "|LOS_iters" << std::setw(16) << "|BCGSTAB_iters"
+      << std::setw(16) << "|LOS_residual" << std::setw(16) << "|BSG_residual"
+      << std::setw(16) << "|LOS_error" << std::setw(16) << "|BCG_error" << std::endl;
+   wres << "--------------------------------------------------------------------";
+   wres << "------------------------------------------------------------------" << std::endl;
+
+   std::cout << "omega" << std::endl;
+
+   for (const auto& w : omegas)
    {
-      mfe solver(*sg);
-      solver.set_w(w);
-      solver.assembly_global_matrix_and_vector(funcs[ifu].fs, funcs[ifu].fc);
+      //double w = 1;
 
-      result r1 = solver.solve(method::LU);
-      double err_lu = norm(solver.q - exact) / exact_norm;
+      mfe mfe(*sg);
+      mfe.set_w(w);
+      mfe.assembly_global_matrix_and_vector(funcs[ifu].fs, funcs[ifu].fc);
 
-      result r2 = solver.solve(method::LOS_LU);
-      double err_los = norm(solver.q - exact) / exact_norm;
+      res1 = mfe.solve(method::LU);
+      auto dif = mfe.q - exact;
+      double err0 = norm(dif) / exact_norm;
+      std::cout << err0 << std::endl;
 
-      out << std::left
-         << std::setw(12) << w
-         << "|" << std::setw(11) << r1.time.count()
-         << "|" << std::setw(11) << r2.time.count()
-         << "|" << std::setw(13) << r2.iters
-         << "|" << std::setw(17) << r2.residual
-         << "|" << std::setw(13) << err_lu
-         << "|" << std::setw(13) << err_los
-         << "\n";
+      res2 = mfe.solve(method::LOS_LU);
+      dif = mfe.q - exact;
+      double err1 = norm(dif) / exact_norm;
 
-      std::cout << "w=" << w << "  LU_err=" << err_lu << "  LOS_err=" << err_los << "\n";
+      res3 = mfe.solve(method::BCGSTAB_LU);
+      dif = mfe.q - exact;
+      double err2 = norm(dif) / exact_norm;
+
+      wres << std::left << std::setw(10) << w
+         << "|" << std::setw(9) << res1.time.count() << "|" << std::setw(9) << res2.time.count() << "|" << std::setw(13) << res3.time.count()
+         << "|" << std::setw(13) << res2.iters << "|" << std::setw(15) << res3.iters
+         << "|" << std::setw(15) << res2.residual << "|" << std::setw(15) << res3.residual
+         << "|" << std::setw(15) << err1 << "|" << std::setw(15) << err2 << std::endl;
+
+      mfe.~mfe();
    }
-   std::cout << "\n";
-
-   delete sg;
+   std::cout << std::endl;
 }
 
-// ----------------------------------------------------------------
 void tests::lambda_tests()
 {
    space_grid_generator sgg;
    space_grid *sg = nullptr;
+
    sgg.build_mesh(sg, funcs[ifu].us, funcs[ifu].uc);
 
    calc_exact(*sg);
@@ -171,47 +137,59 @@ void tests::lambda_tests()
 
    double lambdas[] = { 1e2, 1e3, 1e4, 1e5, 8e5 };
 
-   std::ofstream out(directory + "tests\\lambda_tests.txt");
-   write_header(out, "lambda");
+   result res1, res2, res3;
 
-   std::cout << "=== lambda tests ===\n";
+   std::ofstream wres(directory + "tests\\" + "lambda_tests.txt");
+   std::ofstream wresdif(directory + "tests\\" + "lambda_tests_diffs.txt");
 
-   for (const auto &lam : lambdas)
+   wres << std::left << std::setw(10) << "lambda"
+      << std::setw(10) << "|LU_time" << std::setw(10) << "|LOS_time" << std::setw(14) << "|BCGSTAB_time"
+      << std::setw(14) << "|LOS_iters" << std::setw(16) << "|BCGSTAB_iters"
+      << std::setw(16) << "|LOS_residual" << std::setw(16) << "|BSG_residual"
+      << std::setw(16) << "|LOS_error" << std::setw(16) << "|BCG_error" << std::endl;
+   wres << "--------------------------------------------------------------------";
+   wres << "------------------------------------------------------------------" << std::endl;
+
+   std::cout << "lambda" << std::endl;
+
+   for (const auto &lambda : lambdas)
    {
-      sg->set_lambda(lam);
+      sg->set_lambda(lambda);
 
-      mfe solver(*sg);
-      solver.set_w(10);
-      solver.assembly_global_matrix_and_vector(funcs[ifu].fs, funcs[ifu].fc);
+      mfe mfe(*sg);
+      mfe.set_w(10);
+      mfe.assembly_global_matrix_and_vector(funcs[ifu].fs, funcs[ifu].fc);
 
-      result r1 = solver.solve(method::LU);
-      double err_lu = norm(solver.q - exact) / exact_norm;
+      res1 = mfe.solve(method::LU);
+      auto dif = mfe.q - exact;
+      double err0 = norm(dif) / exact_norm;
+      std::cout << err0 << std::endl;
 
-      result r2 = solver.solve(method::LOS_LU);
-      double err_los = norm(solver.q - exact) / exact_norm;
+      res2 = mfe.solve(method::LOS_LU);
+      dif = mfe.q - exact;
+      double err1 = norm(dif) / exact_norm;
 
-      out << std::left
-         << std::setw(12) << lam
-         << "|" << std::setw(11) << r1.time.count()
-         << "|" << std::setw(11) << r2.time.count()
-         << "|" << std::setw(13) << r2.iters
-         << "|" << std::setw(17) << r2.residual
-         << "|" << std::setw(13) << err_lu
-         << "|" << std::setw(13) << err_los
-         << "\n";
+      res3 = mfe.solve(method::BCGSTAB_LU);
+      dif = mfe.q - exact;
+      double err2 = norm(dif) / exact_norm;
 
-      std::cout << "lambda=" << lam << "  LU_err=" << err_lu << "  LOS_err=" << err_los << "\n";
+
+      wres << std::left << std::setw(10) << lambda
+         << "|" << std::setw(9) << res1.time.count() << "|" << std::setw(9) << res2.time.count() << "|" << std::setw(13) << res3.time.count()
+         << "|" << std::setw(13) << res2.iters << "|" << std::setw(15) << res3.iters <<
+         "|" << std::setw(15) << res2.residual << "|" << std::setw(15) << res3.residual
+         << "|" << std::setw(15) << err1 << "|" << std::setw(15) << err2 << std::endl;
+
+      mfe.~mfe();
    }
-   std::cout << "\n";
-
-   delete sg;
+   std::cout << std::endl;
 }
 
-// ----------------------------------------------------------------
 void tests::sigma_tests()
 {
    space_grid_generator sgg;
    space_grid *sg = nullptr;
+
    sgg.build_mesh(sg, funcs[ifu].us, funcs[ifu].uc);
 
    calc_exact(*sg);
@@ -219,47 +197,58 @@ void tests::sigma_tests()
 
    double sigmas[] = { 0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8 };
 
-   std::ofstream out(directory + "tests\\sigma_tests.txt");
-   write_header(out, "sigma");
+   result res1, res2, res3;
 
-   std::cout << "=== sigma tests ===\n";
+   std::ofstream wres(directory + "tests\\" + "sigma_tests.txt");
+   std::ofstream wresdif(directory + "tests\\" + "sigma_tests_diffs.txt");
 
-   for (const auto &sig : sigmas)
+   wres << std::left << std::setw(10) << "sigma"
+      << std::setw(10) << "|LU_time" << std::setw(10) << "|LOS_time" << std::setw(14) << "|BCGSTAB_time"
+      << std::setw(14) << "|LOS_iters" << std::setw(16) << "|BCGSTAB_iters"
+      << std::setw(16) << "|LOS_residual" << std::setw(16) << "|BSG_residual"
+      << std::setw(16) << "|LOS_error" << std::setw(16) << "|BCG_error" << std::endl;
+   wres << "--------------------------------------------------------------------";
+   wres << "------------------------------------------------------------------" << std::endl;
+
+   std::cout << "sigma" << std::endl;
+
+   for (const auto &sigma : sigmas)
    {
-      sg->set_sigma(sig);
+      sg->set_sigma(sigma);
 
-      mfe solver(*sg);
-      solver.set_w(10);
-      solver.assembly_global_matrix_and_vector(funcs[ifu].fs, funcs[ifu].fc);
+      mfe mfe(*sg);
+      mfe.set_w(10);
+      mfe.assembly_global_matrix_and_vector(funcs[ifu].fs, funcs[ifu].fc);
 
-      result r1 = solver.solve(method::LU);
-      double err_lu = norm(solver.q - exact) / exact_norm;
+      res1 = mfe.solve(method::LU);
+      auto dif = mfe.q - exact;
+      double err0 = norm(dif) / exact_norm;
+      std::cout << err0 << std::endl;
 
-      result r2 = solver.solve(method::LOS_LU);
-      double err_los = norm(solver.q - exact) / exact_norm;
+      res2 = mfe.solve(method::LOS_LU);
+      dif = mfe.q - exact;
+      double err1 = norm(dif) / exact_norm;
 
-      out << std::left
-         << std::setw(12) << sig
-         << "|" << std::setw(11) << r1.time.count()
-         << "|" << std::setw(11) << r2.time.count()
-         << "|" << std::setw(13) << r2.iters
-         << "|" << std::setw(17) << r2.residual
-         << "|" << std::setw(13) << err_lu
-         << "|" << std::setw(13) << err_los
-         << "\n";
+      res3 = mfe.solve(method::BCGSTAB_LU);
+      dif = mfe.q - exact;
+      double err2 = norm(dif) / exact_norm;
 
-      std::cout << "sigma=" << sig << "  LU_err=" << err_lu << "  LOS_err=" << err_los << "\n";
+      wres << std::left << std::setw(10) << sigma
+         << "|" << std::setw(9) << res1.time.count() << "|" << std::setw(9) << res2.time.count() << "|" << std::setw(13) << res3.time.count()
+         << "|" << std::setw(13) << res2.iters << "|" << std::setw(15) << res3.iters <<
+         "|" << std::setw(15) << res2.residual << "|" << std::setw(15) << res3.residual
+         << "|" << std::setw(15) << err1 << "|" << std::setw(15) << err2 << std::endl;
+
+      mfe.~mfe();
    }
-   std::cout << "\n";
-
-   delete sg;
+   std::cout << std::endl;
 }
 
-// ----------------------------------------------------------------
 void tests::hi_tests()
 {
    space_grid_generator sgg;
    space_grid *sg = nullptr;
+
    sgg.build_mesh(sg, funcs[ifu].us, funcs[ifu].uc);
 
    calc_exact(*sg);
@@ -267,47 +256,62 @@ void tests::hi_tests()
 
    double his[] = { 8.81e-12, 1e-12, 1e-11, 1e-10 };
 
-   std::ofstream out(directory + "tests\\hi_tests.txt");
-   write_header(out, "hi");
+   result res1, res2, res3;
 
-   std::cout << "=== hi tests ===\n";
+   std::ofstream wres(directory + "tests\\" + "hi_tests.txt");
+   std::ofstream wresdif(directory + "tests\\" + "hi_tests_diffs.txt");
+
+   wres << std::left << std::setw(10) << "hi"
+      << std::setw(10) << "|LU_time" << std::setw(10) << "|LOS_time" << std::setw(14) << "|BCGSTAB_time"
+      << std::setw(14) << "|LOS_iters" << std::setw(16) << "|BCGSTAB_iters"
+      << std::setw(16) << "|LOS_residual" << std::setw(16) << "|BSG_residual"
+      << std::setw(16) << "|LOS_error" << std::setw(16) << "|BCG_error" << std::endl;
+   wres << "--------------------------------------------------------------------";
+   wres << "------------------------------------------------------------------" << std::endl;
+
+   std::cout << "hi" << std::endl;
 
    for (const auto &hi : his)
    {
-      sg->set_hi(hi); // исправлен баг: было set_sigma(hi)
+      sg->set_hi(hi);
 
-      mfe solver(*sg);
-      solver.set_w(10);
-      solver.assembly_global_matrix_and_vector(funcs[ifu].fs, funcs[ifu].fc);
+      mfe mfe(*sg);
+      mfe.set_w(10);
+      mfe.assembly_global_matrix_and_vector(funcs[ifu].fs, funcs[ifu].fc);
 
-      result r1 = solver.solve(method::LU);
-      double err_lu = norm(solver.q - exact) / exact_norm;
+      res1 = mfe.solve(method::LU);
+      auto dif = mfe.q - exact;
+      double err0 = norm(dif) / exact_norm;
+      std::cout << err0 << std::endl;
 
-      result r2 = solver.solve(method::LOS_LU);
-      double err_los = norm(solver.q - exact) / exact_norm;
+      res2 = mfe.solve(method::LOS_LU);
+      dif = mfe.q - exact;
+      double err1 = norm(dif) / exact_norm;
 
-      out << std::left
-         << std::setw(12) << hi
-         << "|" << std::setw(11) << r1.time.count()
-         << "|" << std::setw(11) << r2.time.count()
-         << "|" << std::setw(13) << r2.iters
-         << "|" << std::setw(17) << r2.residual
-         << "|" << std::setw(13) << err_lu
-         << "|" << std::setw(13) << err_los
-         << "\n";
+      res3 = mfe.solve(method::BCGSTAB_LU);
+      dif = mfe.q - exact;
+      double err2 = norm(dif) / exact_norm;
 
-      std::cout << "hi=" << hi << "  LU_err=" << err_lu << "  LOS_err=" << err_los << "\n";
+      wres << std::left << std::setw(10) << hi
+         << "|" << std::setw(9) << res1.time.count() << "|" << std::setw(9) << res2.time.count() << "|" << std::setw(13) << res3.time.count()
+         << "|" << std::setw(13) << res2.iters << "|" << std::setw(15) << res3.iters <<
+         "|" << std::setw(15) << res2.residual << "|" << std::setw(15) << res3.residual
+         << "|" << std::setw(15) << err1 << "|" << std::setw(15) << err2 << std::endl;
+
+      mfe.~mfe();
    }
-   std::cout << "\n";
 
-   delete sg;
+   std::cout << std::endl;
 }
 
-// ----------------------------------------------------------------
+
 void tests::run()
 {
    omega_tests();
+
    lambda_tests();
+
    sigma_tests();
+
    hi_tests();
 }

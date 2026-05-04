@@ -6,74 +6,85 @@
 #include "finite_element.hpp"
 #include "area.hpp"
 
-/*
-  Нумерация узлов внутри элемента:
-    2 --- 3        (xk,yk1) --- (xk1,yk1)
-    |     |    =>       |             |
-    0 --- 1        (xk,yk ) --- (xk1,yk )
-
-  Билинейные базисные функции:
-    psi_0 = (xk1-x)(yk1-y) / (hx*hy)
-    psi_1 = (x-xk )(yk1-y) / (hx*hy)
-    psi_2 = (xk1-x)(y-yk ) / (hx*hy)
-    psi_3 = (x-xk )(y-yk ) / (hx*hy)
-*/
 struct basis_function
 {
+   // Границы области, в которой определены базисные функции
    double xk, xk1;
    double yk, yk1;
-   double hx, hy;
+   double zk, zk1;
+   double hx, hy, hz;
 
    basis_function(omega &_area)
    {
-      xk = _area.start_point.x;  xk1 = _area.end_point.x;
-      yk = _area.start_point.y;  yk1 = _area.end_point.y;
+      xk = _area.start_point.x;
+      yk = _area.start_point.y;
+      zk = _area.start_point.z;
+      xk1 = _area.end_point.x;
+      yk1 = _area.end_point.y;
+      zk1 = _area.end_point.z;
+
       hx = xk1 - xk;
       hy = yk1 - yk;
+      hz = zk1 - zk;
    }
 
-   // Значение i-й базисной функции в точке point
-   double psi(uint32_t ifunc, point2D &point)
+   double psi(uint32_t ifunc, point3D &point)
    {
-      double x = point.x, y = point.y;
+      double x = point.x;
+      double y = point.y;
+      double z = point.z;
+
       switch (ifunc)
       {
-      case 0: return (xk1 - x) * (yk1 - y) / (hx * hy);
-      case 1: return (x - xk) * (yk1 - y) / (hx * hy);
-      case 2: return (xk1 - x) * (y - yk) / (hx * hy);
-      case 3: return (x - xk) * (y - yk) / (hx * hy);
+      case 0:
+         return (xk1 - x) * (yk1 - y) * (zk1 - z) / (hx * hy * hz);
+
+      case 1:
+         return (x - xk) * (yk1 - y) * (zk1 - z) / (hx * hy * hz);
+
+      case 2:
+         return (xk1 - x) * (y - yk) * (zk1 - z) / (hx * hy * hz);
+
+      case 3:
+         return (x - xk) * (y - yk) * (zk1 - z) / (hx * hy * hz);
+
+      case 4:
+         return (xk1 - x) * (yk1 - y) * (z - zk) / (hx * hy * hz);
+
+      case 5:
+         return (x - xk) * (yk1 - y) * (z - zk) / (hx * hy * hz);
+
+      case 6:
+         return (xk1 - x) * (y - yk) * (z - zk) / (hx * hy * hz);
+
+      case 7:
+         return (x - xk) * (y - yk) * (z - zk) / (hx * hy * hz);
       }
-      return 0.0;
    }
 
-   // Частная производная i-й базисной функции:
-   //   ivar == 1  =>  d/dx
-   //   ivar == 2  =>  d/dy
-   double d_psi(uint8_t ifunc, uint8_t ivar, point2D &point)
+   double d_psi(uint8_t ifunc, uint8_t ivar, point3D &point)
    {
-      double x = point.x, y = point.y;
-
-      if (ivar == 1) // d/dx (аналитически)
+      switch (ivar)
       {
-         switch (ifunc)
-         {
-         case 0: return -(yk1 - y) / (hx * hy);
-         case 1: return  (yk1 - y) / (hx * hy);
-         case 2: return -(y - yk) / (hx * hy);
-         case 3: return  (y - yk) / (hx * hy);
-         }
+      case 1: {
+         point3D next = point, prev = point;
+         next.x += hx;
+         prev.x -= hx;
+         return (psi(ifunc, next) - psi(ifunc, prev)) / (2 * hx);
       }
-      else           // d/dy (аналитически)
-      {
-         switch (ifunc)
-         {
-         case 0: return -(xk1 - x) / (hx * hy);
-         case 1: return -(x - xk) / (hx * hy);
-         case 2: return  (xk1 - x) / (hx * hy);
-         case 3: return  (x - xk) / (hx * hy);
-         }
+      case 2: {
+         point3D next = point, prev = point;
+         next.y += hy;
+         prev.y -= hy;
+         return (psi(ifunc, next) - psi(ifunc, prev)) / (2 * hy);
       }
-      return 0.0;
+      case 3: {
+         point3D next = point, prev = point;
+         next.z += hz;
+         prev.z -= hz;
+         return (psi(ifunc, next) - psi(ifunc, prev)) / (2 * hz);
+      }
+      }
    }
 };
 

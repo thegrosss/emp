@@ -1,33 +1,32 @@
 // ================ AREA.HPP ================
-#pragma once
+#pragma once 
 #ifndef AREA_HPP
 #define AREA_HPP
 
-// Точка в двумерном пространстве
-struct point2D
+// Точка в трехмерном пространстве
+struct point3D
 {
-   double x, y;
+   double x, y, z;
 
-   point2D(double _x = 0, double _y = 0) :
-      x(_x), y(_y)
-   {
-   };
+   point3D(double _x = 0, double _y = 0, double _z = 0) :
+      x(_x), y(_y), z(_z) { };
 };
 
-// Описание подобласти (параметры уравнения)
+// Описание всей расчетной области
 struct area
 {
    double x_start, x_end;
    double y_start, y_end;
+   double z_start, z_end;
 
    double lambda, sigma, hi;
 };
 
-// Опорный элемент (прямоугольник) в 2D
+// Область омега (представляет границы конечного элемента)
 struct omega
 {
-   point2D start_point; // (xk,  yk)
-   point2D end_point;   // (xk1, yk1)
+   point3D start_point;
+   point3D end_point;
 };
 
 #endif
